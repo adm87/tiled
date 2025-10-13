@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="26" height="15" tilewidth="18" tileheight="18" infinite="0" nextlayerid="12" nextobjectid="33">
+ <tileset firstgid="1" source="tileset-characters.tsx"/>
+ <tileset firstgid="28" source="tileset-tiles.tsx"/>
+ <layer id="1" name="Tiles" width="26" height="15" locked="1">
+  <data encoding="base64" compression="zlib">
+   eJy1kD2OwkAMhecsQMGSFgQFYun5ESLVggQUK/YCewCK1FARiAQScAA6FsocDVvrSI7lyQQElj45M7bfG8eYdKzMewJ0D5wlqxUplyhfgD/g+kL/ApE3bo76kThl9MA+B+1+6tDG/V27Txx1jN8cPbaoAB9AmbLHag323QF6lHnUgZkxi7x+gyfe2CXvvlKz/T/pg3vijp7SexbnmTFtzJHYK/nPUYYPRvO/J7Y8LTWP8QV8AiOFMfV8A3sxx723iibOt5hWDfCBAAhZRqoW38R7J3S5Js4Pha7PtDUCQvpK3UDMDMW8L3o0j1DJoeWcMBe1H6Vn49hRYy1mwScO0z7xo5p5mFvu72nHZZI=
+  </data>
+ </layer>
+ <layer id="9" name="Tiles (layer)" width="26" height="15" locked="1">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjAL6gigkHE1De6Yh4elk6I9koL0bByMAABhCBNE=
+  </data>
+ </layer>
+ <layer id="7" name="Water" width="26" height="15" locked="1">
+  <data encoding="base64" compression="zlib">
+   eJxjYGBg6GegDxi1Z/DasxCI++hgzygYBcMRBNIJp9IJAwDG+hZ3
+  </data>
+ </layer>
+ <layer id="8" name="Characters" width="26" height="15" locked="1">
+  <data encoding="base64" compression="zlib">
+   eJxjYBi6QGqgHYAHMDEwNBCrVpKG7sAFpAfATlKAIAnhNxCAlYZmC1DJHD4kthiVzBwMgH+gHTACAABwggGq
+  </data>
+ </layer>
+</map>
