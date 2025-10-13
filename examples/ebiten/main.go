@@ -6,7 +6,7 @@ import (
 	"math"
 
 	"github.com/adm87/tiled"
-	"github.com/adm87/tiled/examples/shared/shared"
+	"github.com/adm87/tiled/examples/shared"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"

@@ -1,4 +1,4 @@
-module github.com/adm87/tiled/examples/shared
+module github.com/adm87/tiled/examples
 
 go 1.25.2
 
