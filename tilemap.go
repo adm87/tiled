@@ -2,6 +2,7 @@ package tiled
 
 import (
 	"errors"
+	"math"
 )
 
 var (
@@ -18,11 +19,6 @@ type TileData struct {
 	TileID   uint32   // Tile ID
 	TsIdx    int      // Tileset index
 	FlipFlag FlipFlag // Flip flags
-}
-
-// TileIndex represents the coordinates of a tile in tilemap grid used for indexing tile data.
-type TileIndex struct {
-	X, Y int32
 }
 
 // TileRegion defines a rectangular region in tile coordinates.
@@ -73,12 +69,18 @@ func (ti *TileIterator) Reset() {
 // TilemapContent represents the decoded tile data for a layer or chunk.
 type TilemapContent []uint32
 
+type TileKey uint64
+
+func NewTileKey(x, y int32) TileKey {
+	return TileKey(int64(x)<<32 | int64(uint32(y)))
+}
+
 // TilemapLayer represents a layer in the tilemap, which can be either a full layer or composed of chunks.
 type TilemapLayer struct {
 	Content TilemapContent
 	Chunks  []TilemapContent
 
-	Tiles map[TileIndex]TileData // Indexed tiles for quick lookup
+	Tiles map[TileKey]TileData // Indexed tiles for quick lookup
 }
 
 // Tilemap provides an API for operating on deserialized Tmx data.
@@ -221,7 +223,7 @@ func decodeTilemapLayers(tmx *Tmx) ([]TilemapLayer, error) {
 	layers := make([]TilemapLayer, len(tmx.Layers))
 
 	for i := range tmx.Layers {
-		layers[i].Tiles = make(map[TileIndex]TileData)
+		layers[i].Tiles = make(map[TileKey]TileData)
 
 		if tmx.IsInfinite() {
 			chunks, err := decodeTilemapChunks(&tmx.Layers[i])
@@ -267,7 +269,7 @@ func getTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (TileDat
 
 	var zero TileData
 
-	idx := TileIndex{X: x, Y: y}
+	idx := NewTileKey(x, y)
 	if tile, exists := layer.Tiles[idx]; exists {
 		return tile, true
 	}
@@ -288,7 +290,7 @@ func getTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (TileDat
 func getChunkTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (TileData, bool) {
 	var zero TileData
 
-	idx := TileIndex{X: x, Y: y}
+	idx := NewTileKey(x, y)
 	if tile, exists := layer.Tiles[idx]; exists {
 		return tile, true
 	}
@@ -349,10 +351,10 @@ func calculateTileBounds(tmx *Tmx) (minX, minY, maxX, maxY int32) {
 }
 
 func calculateTileInfiniteBounds(tmx *Tmx) (minX, minY, maxX, maxY int32) {
-	minX = 1<<31 - 1
-	minY = 1<<31 - 1
-	maxX = -1 << 31
-	maxY = -1 << 31
+	minX = math.MaxInt32
+	minY = math.MaxInt32
+	maxX = math.MinInt32
+	maxY = math.MinInt32
 
 	for i := range tmx.Layers {
 		for j := range tmx.Layers[i].Data.Chunks {
@@ -375,5 +377,10 @@ func calculateQueryRegion(minX, minY, maxX, maxY, tileWidth, tileHeight int32) T
 	minY /= tileHeight
 	maxX = (maxX + tileWidth - 1) / tileWidth
 	maxY = (maxY + tileHeight - 1) / tileHeight
-	return TileRegion{MinX: minX, MinY: minY, MaxX: maxX, MaxY: maxY}
+	return TileRegion{
+		MinX: minX - 1,
+		MinY: minY - 1,
+		MaxX: maxX,
+		MaxY: maxY,
+	}
 }
