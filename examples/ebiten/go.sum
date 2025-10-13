@@ -1,7 +1,9 @@
 github.com/adm87/enum v0.0.1 h1:I+xMetKDktJbmjduyo0pjYP8V1E2PaYdUxnNJ3zneh8=
 github.com/adm87/enum v0.0.1/go.mod h1:vrW9zQsEkUBd2a+tg8yiTkYC3O44EkxcqNVlV143pIY=
-github.com/adm87/tiled v0.1.0 h1:6zkK8Unl2ZjyERiTwresIYMSPC9K3E8A8tLOn9GC/Hc=
-github.com/adm87/tiled v0.1.0/go.mod h1:OVC5CvXF9wdsJu9tQO4HbZG5WBgymCo3/n+jTDJLLfc=
+github.com/adm87/tiled v0.1.2 h1:ALVYmyznzEtzbOXNzOBpKMuxzsuklVz6RHslf1jS5K0=
+github.com/adm87/tiled v0.1.2/go.mod h1:OVC5CvXF9wdsJu9tQO4HbZG5WBgymCo3/n+jTDJLLfc=
+github.com/adm87/tiled v0.1.3 h1:5DFD9DtYwDFltZKYYm2ZTB+QvTnvKhZVn/VuH1bKbd8=
+github.com/adm87/tiled v0.1.3/go.mod h1:OVC5CvXF9wdsJu9tQO4HbZG5WBgymCo3/n+jTDJLLfc=
 github.com/ebitengine/gomobile v0.0.0-20250923094054-ea854a63cce1 h1:+kz5iTT3L7uU+VhlMfTb8hHcxLO3TlaELlX8wa4XjA0=
 github.com/ebitengine/gomobile v0.0.0-20250923094054-ea854a63cce1/go.mod h1:lKJoeixeJwnFmYsBny4vvCJGVFc3aYDalhuDsfZzWHI=
 github.com/ebitengine/hideconsole v1.0.0 h1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=

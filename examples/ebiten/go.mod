@@ -1,9 +1,12 @@
-module github.com/adm87/tiled/examples
+module github.com/adm87/tiled/examples/ebiten
 
 go 1.25.2
 
+replace github.com/adm87/tiled/examples/shared => ../shared
+
 require (
-	github.com/adm87/tiled v0.1.0
+	github.com/adm87/tiled v0.1.3
+	github.com/adm87/tiled/examples/shared v0.0.0-00010101000000-000000000000
 	github.com/hajimehoshi/ebiten/v2 v2.9.1
 )
 

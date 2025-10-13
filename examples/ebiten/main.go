@@ -116,19 +116,19 @@ func (g *Game) Update() error {
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
-		g.camera.X -= 4
+		g.camera.X -= 2
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
-		g.camera.X += 4
+		g.camera.X += 2
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
-		g.camera.Y -= 4
+		g.camera.Y -= 2
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
-		g.camera.Y += 4
+		g.camera.Y += 2
 	}
 
 	if _, y := ebiten.Wheel(); y != 0 {
