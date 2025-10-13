@@ -279,6 +279,10 @@ func getTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (TileDat
 		return zero, false
 	}
 
+	if layer.Content[i] == 0 {
+		return zero, false
+	}
+
 	if tile, found := getTile(tmx, x, y, layer.Content[i]); found {
 		layer.Tiles[idx] = tile
 		return tile, true
@@ -308,6 +312,10 @@ func getChunkTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (Ti
 			return zero, false
 		}
 
+		if layer.Chunks[i][localIdx] == 0 {
+			return zero, false
+		}
+
 		if tile, found := getTile(tmx, x, y, layer.Chunks[i][localIdx]); found {
 			layer.Tiles[idx] = tile
 			return tile, true
@@ -319,10 +327,6 @@ func getChunkTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (Ti
 
 func getTile(tmx *Tmx, x, y int32, content uint32) (TileData, bool) {
 	var zero TileData
-
-	if content == 0 {
-		return zero, false
-	}
 
 	tileID, flags := DecodeGID(content)
 	if tileID == 0 {
