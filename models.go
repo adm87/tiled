@@ -2,6 +2,9 @@ package tiled
 
 import (
 	"encoding/xml"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/adm87/enum"
 )
@@ -200,6 +203,9 @@ type Object struct {
 	Name     string `xml:"name,attr,omitempty"`
 	Template string `xml:"template,attr,omitempty"`
 
+	Polyline Polygon `xml:"polyline,omitempty"`
+	Polygon  Polygon `xml:"polygon,omitempty"`
+
 	Properties []Property `xml:"properties>property,omitempty"`
 }
 
@@ -285,6 +291,56 @@ func (l *Layer) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	aux := (*layerAlias)(l)
 
 	return d.DecodeElement(aux, &start)
+}
+
+// ======================================================
+// Polygon
+// ======================================================
+
+type Polygon struct {
+	Points []float32 `xml:"-"` // Flat list of x,y pairs where x=Points[n], y=Points[n+1]
+}
+
+func (p *Polygon) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	for _, attr := range start.Attr {
+		switch attr.Name.Local {
+		case "points":
+			if attr.Value != "" {
+				points := strings.Fields(attr.Value)
+				p.Points = make([]float32, 0, len(points)*2)
+				for _, point := range points {
+					coords := strings.Split(point, ",")
+					if len(coords) != 2 {
+						return fmt.Errorf("invalid point format: %s", point)
+					}
+					x, err1 := strconv.ParseFloat(coords[0], 32)
+					y, err2 := strconv.ParseFloat(coords[1], 32)
+					if err1 != nil || err2 != nil {
+						return fmt.Errorf("invalid coordinate in point %s: %v, %v", point, err1, err2)
+					}
+					p.Points = append(p.Points, float32(x), float32(y))
+				}
+			}
+		}
+	}
+
+	type polygonAlias Polygon
+	aux := (*polygonAlias)(p)
+
+	return d.DecodeElement(aux, &start)
+}
+
+func (p *Polygon) IsEmpty() bool {
+	return len(p.Points) == 0
+}
+
+func (p *Polygon) VertexCount() int {
+	return len(p.Points) / 2
+}
+
+func (p *Polygon) GetVertex(i int) (x, y float32) {
+	idx := i * 2
+	return p.Points[idx], p.Points[idx+1]
 }
 
 // ======================================================
