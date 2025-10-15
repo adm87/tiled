@@ -31,9 +31,9 @@ func DecodeGID(gid uint32) (tileID uint32, flags FlipFlag) {
 	}
 	if gid&FlipDiagonalFlag != 0 {
 		flags |= FlipDiagonal
-		if flags&(FlipHorizontal|FlipVertical) != 0 {
-			flags ^= FlipHorizontal | FlipVertical
-		}
+	}
+	if gid&RotateHexFlag != 0 {
+		flags |= FlipHex
 	}
 	return
 }

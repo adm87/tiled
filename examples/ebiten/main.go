@@ -204,18 +204,18 @@ func (g *Game) DrawTile(screen *ebiten.Image, tile *tiled.TileData) {
 
 	g.op.GeoM.Reset()
 
-	if tile.FlipFlag&tiled.FlipDiagonal != 0 {
+	if tile.FlipFlag.Diagonal() {
 		g.op.GeoM.Rotate(math.Pi * 0.5)
 		g.op.GeoM.Scale(-1, 1)
 		g.op.GeoM.Translate(float64(tsx.TileHeight-tsx.TileWidth), 0)
 	}
 
-	if tile.FlipFlag&tiled.FlipHorizontal != 0 {
+	if tile.FlipFlag.Horizontal() {
 		g.op.GeoM.Scale(-1, 1)
 		g.op.GeoM.Translate(float64(tsx.TileWidth), 0)
 	}
 
-	if tile.FlipFlag&tiled.FlipVertical != 0 {
+	if tile.FlipFlag.Vertical() {
 		g.op.GeoM.Scale(1, -1)
 		g.op.GeoM.Translate(0, float64(tsx.TileHeight))
 	}
