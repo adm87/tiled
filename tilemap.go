@@ -31,6 +31,26 @@ func (tr TileRegion) Equal(other TileRegion) bool {
 	return tr.MinX == other.MinX && tr.MinY == other.MinY && tr.MaxX == other.MaxX && tr.MaxY == other.MaxY
 }
 
+func (tr TileRegion) Overlaps(other TileRegion) bool {
+	return tr.MinX < other.MaxX && tr.MaxX > other.MinX &&
+		tr.MinY < other.MaxY && tr.MaxY > other.MinY
+}
+
+func (tr TileRegion) Width() int32 {
+	return tr.MaxX - tr.MinX
+}
+
+func (tr TileRegion) Height() int32 {
+	return tr.MaxY - tr.MinY
+}
+
+// CompatibleForCaching returns true if regions have compatible dimensions for cache reuse.
+func (tr TileRegion) CompatibleForCaching(other TileRegion) bool {
+	widthDiff := tr.Width() - other.Width()
+	heightDiff := tr.Height() - other.Height()
+	return widthDiff >= -1 && widthDiff <= 1 && heightDiff >= -1 && heightDiff <= 1
+}
+
 // TileIterator iterates over layers of TileData in a tilemap.
 // Each call to Next() returns the tiles for the next layer as a slice.
 // If a layer is not visible, Next() returns an empty slice for that layer.
@@ -87,8 +107,9 @@ type TilemapLayer struct {
 type Tilemap struct {
 	Tmx *Tmx
 
-	tileRegion TileRegion // Last queried tile region
-	iterator   TileIterator
+	cachedTileRegion TileRegion // Cached tile region for current query
+	cachedTileData   []TileData // Cached tile data for current query
+	cachedPositions  []int      // Cached positions for current query
 
 	minX, minY int32 // Minimum tile coordinates boundary
 	maxX, maxY int32 // Maximum tile coordinates boundary
@@ -98,10 +119,11 @@ type Tilemap struct {
 
 func NewTilemap() *Tilemap {
 	return &Tilemap{
-		Tmx:           nil,
-		tileRegion:    TileRegion{},
-		iterator:      TileIterator{},
-		decodedLayers: make([]TilemapLayer, 0),
+		Tmx:              nil,
+		cachedTileRegion: TileRegion{},
+		cachedTileData:   make([]TileData, 0, 64),    // Pre-allocate some capacity
+		cachedPositions:  make([]int, 0, 8),          // Pre-allocate for typical layer count
+		decodedLayers:    make([]TilemapLayer, 0, 4), // Pre-allocate for typical layer count
 	}
 }
 
@@ -137,14 +159,9 @@ func (tm *Tilemap) SetTmx(tmx *Tmx) error {
 }
 
 func (tm *Tilemap) FlushCache() {
-	tm.decodedLayers = tm.decodedLayers[:0]
-	tm.iterator.tiles = tm.iterator.tiles[:0]
-	tm.iterator.positions = tm.iterator.positions[:0]
-	tm.iterator.index = 0
-	tm.tileRegion.MinX = 0
-	tm.tileRegion.MinY = 0
-	tm.tileRegion.MaxX = 0
-	tm.tileRegion.MaxY = 0
+	tm.cachedTileRegion = TileRegion{}
+	tm.cachedTileData = tm.cachedTileData[:0]
+	tm.cachedPositions = tm.cachedPositions[:0]
 }
 
 // Bounds returns the world coordinate bounds of the tilemap.
@@ -171,52 +188,68 @@ func (tm *Tilemap) GetTileset(index int) (*Tileset, error) {
 
 // GetTiles returns a tile iterator for the provided region.
 //
-// Panics if the tilemap has no Tmx data set.
-func (tm *Tilemap) GetTiles(minX, minY, maxX, maxY int32) (TileIterator, error) {
+// Returns an error if the tilemap has no Tmx data set or if coordinates are invalid.
+func (tm *Tilemap) GetTiles(minX, minY, maxX, maxY float32) (TileIterator, error) {
 	if tm.Tmx == nil || len(tm.decodedLayers) == 0 {
 		return TileIterator{}, ErrNoTmxData
 	}
 
-	queryRegion := calculateQueryRegion(minX, minY, maxX, maxY, tm.Tmx.TileWidth, tm.Tmx.TileHeight)
-
-	if queryRegion.Equal(tm.tileRegion) {
-		return TileIterator{
-			tiles:     tm.iterator.tiles,
-			positions: tm.iterator.positions,
-			index:     0,
-		}, nil
+	if minX > maxX || minY > maxY {
+		return TileIterator{}, errors.New("invalid coordinate bounds: min > max")
 	}
 
-	tm.tileRegion = queryRegion
+	queryRegion := calculateQueryRegion(minX, minY, maxX, maxY, tm.Tmx.TileWidth, tm.Tmx.TileHeight)
+	if queryRegion.Equal(tm.cachedTileRegion) {
+		return tm.buildIterator(), nil
+	}
 
-	tm.iterator.tiles = tm.iterator.tiles[:0]
-	tm.iterator.positions = tm.iterator.positions[:0]
-	tm.iterator.index = 0
+	if queryRegion.CompatibleForCaching(tm.cachedTileRegion) {
+		tm.updateCache(queryRegion)
+		return tm.buildIterator(), nil
+	}
+
+	size := int(queryRegion.Width() * queryRegion.Height() * int32(len(tm.decodedLayers)))
+	if cap(tm.cachedTileData) < size {
+		tm.cachedTileData = make([]TileData, 0, size)
+	}
+
+	tm.updateCache(queryRegion)
+	return tm.buildIterator(), nil
+}
+
+func (tm *Tilemap) updateCache(region TileRegion) {
+	tm.cachedTileRegion = region
+
+	tm.cachedTileData = tm.cachedTileData[:0]
+	tm.cachedPositions = tm.cachedPositions[:0]
 
 	for i := range tm.decodedLayers {
-		tm.iterator.positions = append(tm.iterator.positions, len(tm.iterator.tiles))
+		tm.cachedPositions = append(tm.cachedPositions, len(tm.cachedTileData))
 
 		if !tm.Tmx.Layers[i].IsVisible() {
 			continue
 		}
 
-		for y := queryRegion.MinY; y < queryRegion.MaxY; y++ {
-			for x := queryRegion.MinX; x < queryRegion.MaxX; x++ {
+		for y := region.MinY; y < region.MaxY; y++ {
+			for x := region.MinX; x < region.MaxX; x++ {
 				if tile, found := getTileAt(tm.Tmx, &tm.decodedLayers[i], x, y, i); found {
-					tm.iterator.tiles = append(tm.iterator.tiles, tile)
+					tm.cachedTileData = append(tm.cachedTileData, tile)
 				}
 			}
 		}
 	}
 
-	tm.iterator.positions = append(tm.iterator.positions, len(tm.iterator.tiles))
-	tm.iterator.Reset()
+	tm.cachedPositions = append(tm.cachedPositions, len(tm.cachedTileData))
+}
 
-	return TileIterator{
-		tiles:     tm.iterator.tiles,
-		positions: tm.iterator.positions,
-		index:     0,
-	}, nil
+func (tm *Tilemap) buildIterator() TileIterator {
+	iteratorTiles := make([]TileData, len(tm.cachedTileData))
+	copy(iteratorTiles, tm.cachedTileData)
+
+	iteratorPositions := make([]int, len(tm.cachedPositions))
+	copy(iteratorPositions, tm.cachedPositions)
+
+	return TileIterator{iteratorTiles, iteratorPositions, 0}
 }
 
 func decodeTilemapLayers(tmx *Tmx) ([]TilemapLayer, error) {
@@ -274,8 +307,8 @@ func getTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (TileDat
 		return tile, true
 	}
 
-	i := int(y*tmx.Width + x)
-	if i < 0 || i >= len(layer.Content) {
+	i := int64(y)*int64(tmx.Width) + int64(x)
+	if i < 0 || i >= int64(len(layer.Content)) {
 		return zero, false
 	}
 
@@ -307,8 +340,8 @@ func getChunkTileAt(tmx *Tmx, layer *TilemapLayer, x, y int32, layerIdx int) (Ti
 
 		localX := x - chunk.X
 		localY := y - chunk.Y
-		localIdx := int(localY*chunk.Width + localX)
-		if localIdx < 0 || localIdx >= len(layer.Chunks[i]) {
+		localIdx := int64(localY)*int64(chunk.Width) + int64(localX)
+		if localIdx < 0 || localIdx >= int64(len(layer.Chunks[i])) {
 			return zero, false
 		}
 
@@ -359,7 +392,6 @@ func calculateTileInfiniteBounds(tmx *Tmx) (minX, minY, maxX, maxY int32) {
 	minY = math.MaxInt32
 	maxX = math.MinInt32
 	maxY = math.MinInt32
-
 	for i := range tmx.Layers {
 		for j := range tmx.Layers[i].Data.Chunks {
 			minX = minInt32(minX, tmx.Layers[i].Data.Chunks[j].X)
@@ -368,7 +400,6 @@ func calculateTileInfiniteBounds(tmx *Tmx) (minX, minY, maxX, maxY int32) {
 			maxY = maxInt32(maxY, tmx.Layers[i].Data.Chunks[j].Y+tmx.Layers[i].Data.Chunks[j].Height)
 		}
 	}
-
 	minX *= tmx.TileWidth
 	minY *= tmx.TileHeight
 	maxX *= tmx.TileWidth
@@ -376,15 +407,11 @@ func calculateTileInfiniteBounds(tmx *Tmx) (minX, minY, maxX, maxY int32) {
 	return
 }
 
-func calculateQueryRegion(minX, minY, maxX, maxY, tileWidth, tileHeight int32) TileRegion {
-	minX /= tileWidth
-	minY /= tileHeight
-	maxX = (maxX + tileWidth - 1) / tileWidth
-	maxY = (maxY + tileHeight - 1) / tileHeight
+func calculateQueryRegion(minX, minY, maxX, maxY float32, tileWidth, tileHeight int32) TileRegion {
 	return TileRegion{
-		MinX: minX - 1,
-		MinY: minY - 1,
-		MaxX: maxX,
-		MaxY: maxY,
+		MinX: int32(math.Floor(float64(minX) / float64(tileWidth))),
+		MinY: int32(math.Floor(float64(minY) / float64(tileHeight))),
+		MaxX: int32(math.Ceil(float64(maxX) / float64(tileWidth))),
+		MaxY: int32(math.Ceil(float64(maxY) / float64(tileHeight))),
 	}
 }
