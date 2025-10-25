@@ -45,6 +45,31 @@ func PropertyByType(props []Property, propertyType string) *Property {
 	return nil
 }
 
+func ObjectAlignmentAnchor(alignment ObjectAlignment) (ax, ay float32) {
+	switch alignment {
+	case ObjectAlignmentTop:
+		return 0.5, 0.0
+	case ObjectAlignmentTopRight:
+		return 1.0, 0.0
+	case ObjectAlignmentRight:
+		return 1.0, 0.5
+	case ObjectAlignmentBottomRight:
+		return 1.0, 1.0
+	case ObjectAlignmentBottom:
+		return 0.5, 1.0
+	case ObjectAlignmentBottomLeft:
+		return 0.0, 1.0
+	case ObjectAlignmentLeft:
+		return 0.0, 0.5
+	case ObjectAlignmentCenter:
+		return 0.5, 0.5
+	case ObjectAlignmentTopLeft:
+		fallthrough
+	default:
+		return 0.0, 0.0
+	}
+}
+
 func minInt32(a, b int32) int32 {
 	if a < b {
 		return a

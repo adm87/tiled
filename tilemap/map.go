@@ -21,6 +21,9 @@ const (
 	DefaultChunkSize int32 = 16 // in tiles
 )
 
+// ====================== Region =====================
+
+// Region represents a rectangular region in tile coordinates.
 type Region struct {
 	MinX, MinY int32
 	MaxX, MaxY int32
@@ -65,9 +68,6 @@ type Chunk struct {
 }
 
 func (c *Chunk) Flush() {
-	// c.isDecoded = false
-	// c.raw = ""
-	// clear(c.data)
 	clear(c.tiles)
 }
 
@@ -118,7 +118,7 @@ func (it *Iterator) Next() []Data {
 
 // ====================== Frame =====================
 
-// Frame represents a region of a tilemap that can be iterated over.
+// Frame represents the visible region of a tilemap in world coordinates.
 type Frame struct {
 	bounds [4]float32
 }
@@ -162,9 +162,10 @@ func init() {
 	layerPool.Put(layerPool.Get())
 }
 
+// Map represents the decoded tilemap data from a Tmx file.
+//
+// It provides methods to retrieve tile data, manage layers, and buffer the map for rendering.
 type Map struct {
-	mu sync.RWMutex
-
 	Tmx    *tiled.Tmx
 	layers []*Layer
 
@@ -188,9 +189,6 @@ func NewMap() *Map {
 // Itr returns an iterator for the map.
 // Use this for iterating over tiles in the visible frame.
 func (tm *Map) Itr() Iterator {
-	tm.mu.RLock()
-	defer tm.mu.RUnlock()
-
 	return Iterator{
 		tiles:  tm.cachedData,
 		layers: tm.cachedPositions,
@@ -198,7 +196,7 @@ func (tm *Map) Itr() Iterator {
 	}
 }
 
-// Frame returns the current frame of the map.
+// Frame returns the visible region of the tilemap in world coordinates.
 // Use this to get or set the visible region of the map.
 //
 // Frame only returns the dimensions of the visible region of the tilemap.
@@ -209,13 +207,10 @@ func (tm *Map) Frame() *Frame {
 
 // Flush clears all layers and their chunks from the map.
 func (tm *Map) Flush() {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
 	tm.flush()
 }
 
-// BufferFrame prepares the map for rendering the current frame.
+// BufferFrame buffers tile data for current frame.
 func (tm *Map) BufferFrame() error {
 	if tm.Tmx == nil {
 		return ErrNoTmxData
@@ -229,11 +224,6 @@ func (tm *Map) BufferFrame() error {
 	if region.Equals(&tm.cachedRegion) {
 		return nil
 	}
-
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	// Pre-allocate cache if needed for large regions
 
 	width := region.MaxX - region.MinX
 	height := region.MaxY - region.MinY
@@ -252,10 +242,6 @@ func (tm *Map) SetTmx(tmx *tiled.Tmx) error {
 	if tmx == nil || len(tmx.Layers) == 0 {
 		return ErrInvalidTmxData
 	}
-
-	// We won't allow concurrent access while setting setting up a new tilemap
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
 
 	tm.flush()
 	tm.Tmx = tmx
@@ -322,7 +308,7 @@ func (tm *Map) multiChunklayer(data *tiled.Layer, tileWidth, tileHeight int32) {
 		chunk.x, chunk.y = c.X, c.Y
 		chunk.w, chunk.h = c.Width, c.Height
 
-		layer.Grid.Insert(chunk, minX, minY, maxX, maxY)
+		layer.Grid.Insert(chunk, minX, minY, maxX, maxY, hash.NoGridPadding)
 	}
 
 	tm.layers = append(tm.layers, layer)
@@ -340,7 +326,7 @@ func (tm *Map) singleChunkLayer(data *tiled.Layer, tileWidth, tileHeight int32) 
 	chunk.x, chunk.y = 0, 0
 	chunk.w, chunk.h = data.Width, data.Height
 
-	layer.Grid.Insert(chunk, 0, 0, float32(width), float32(height))
+	layer.Grid.Insert(chunk, 0, 0, float32(width), float32(height), hash.NoGridPadding)
 	tm.layers = append(tm.layers, layer)
 }
 
