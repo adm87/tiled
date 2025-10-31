@@ -39,7 +39,7 @@ func (r *Region) Equals(other *Region) bool {
 // ====================== Data =====================
 
 type Data struct {
-	X, Y     int32          // World position
+	X, Y     float32        // World position
 	TileID   uint32         // Tile ID
 	TsIdx    int            // Tileset index
 	FlipFlag tiled.FlipFlag // Flip flags
@@ -397,23 +397,10 @@ func (tm *Map) getTileFromChunk(chunk *Chunk, x, y int32) (Data, bool) {
 		return zero, false
 	}
 
-	tileID, flipFlags := tiled.DecodeGID(chunk.data[i])
-	if tileID == 0 {
-		return zero, false
-	}
+	x = localx * tm.Tmx.TileWidth
+	y = localy * tm.Tmx.TileHeight
 
-	_, tileID, tsIdx := tiled.TilesetByGID(tm.Tmx, tileID)
-	if tsIdx == -1 {
-		return zero, false
-	}
-
-	return Data{
-		TsIdx:    tsIdx,
-		TileID:   tileID,
-		FlipFlag: flipFlags,
-		X:        x * tm.Tmx.TileWidth,
-		Y:        y * tm.Tmx.TileHeight,
-	}, true
+	return GetTileData(chunk.data[i], tm.Tmx, float32(x), float32(y))
 }
 
 func (tm *Map) computeTileRegion() Region {
@@ -424,4 +411,26 @@ func (tm *Map) computeTileRegion() Region {
 		MaxX: int32(math.Ceil(float64(maxX) / float64(tm.Tmx.TileWidth))),
 		MaxY: int32(math.Ceil(float64(maxY) / float64(tm.Tmx.TileHeight))),
 	}
+}
+
+func GetTileData(gid uint32, tmx *tiled.Tmx, x, y float32) (Data, bool) {
+	var zero Data
+
+	tileID, flipFlags := tiled.DecodeGID(gid)
+	if tileID == 0 {
+		return zero, false
+	}
+
+	_, tileID, tsIdx := tiled.TilesetByGID(tmx, tileID)
+	if tsIdx == -1 {
+		return zero, false
+	}
+
+	return Data{
+		TsIdx:    tsIdx,
+		TileID:   tileID,
+		FlipFlag: flipFlags,
+		X:        x,
+		Y:        y,
+	}, true
 }
