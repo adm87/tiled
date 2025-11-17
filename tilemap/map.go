@@ -143,11 +143,8 @@ func (f *Frame) Bounds() (minX, minY, maxX, maxY float32) {
 	return f.bounds[0], f.bounds[1], f.bounds[2], f.bounds[3]
 }
 
-func (f *Frame) Set(minX, minY, maxX, maxY float32) {
-	f.bounds[0] = minX
-	f.bounds[1] = minY
-	f.bounds[2] = maxX
-	f.bounds[3] = maxY
+func (f *Frame) Set(frame [4]float32) {
+	f.bounds = frame
 }
 
 // ====================== Map =====================
@@ -308,7 +305,7 @@ func (tm *Map) multiChunklayer(data *tiled.Layer, tileWidth, tileHeight int32) {
 		chunk.x, chunk.y = c.X, c.Y
 		chunk.w, chunk.h = c.Width, c.Height
 
-		layer.Grid.Insert(chunk, minX, minY, maxX, maxY, hash.NoGridPadding)
+		layer.Grid.Insert(chunk, [4]float32{minX, minY, maxX, maxY}, hash.NoGridPadding)
 	}
 
 	tm.layers = append(tm.layers, layer)
@@ -326,7 +323,7 @@ func (tm *Map) singleChunkLayer(data *tiled.Layer, tileWidth, tileHeight int32) 
 	chunk.x, chunk.y = 0, 0
 	chunk.w, chunk.h = data.Width, data.Height
 
-	layer.Grid.Insert(chunk, 0, 0, float32(width), float32(height), hash.NoGridPadding)
+	layer.Grid.Insert(chunk, [4]float32{0, 0, float32(width), float32(height)}, hash.NoGridPadding)
 	tm.layers = append(tm.layers, layer)
 }
 
@@ -340,13 +337,12 @@ func (tm *Map) updateCache(region Region) error {
 		tm.cachedPositions = append(tm.cachedPositions, len(tm.cachedData))
 
 		if tm.Tmx.Layers[i].IsVisible() {
-			chunks := tm.layers[i].Grid.Query(
-				float32(region.MinX)*float32(tm.Tmx.TileWidth),
-				float32(region.MinY)*float32(tm.Tmx.TileHeight),
-				float32(region.MaxX)*float32(tm.Tmx.TileWidth),
-				float32(region.MaxY)*float32(tm.Tmx.TileHeight),
-			)
-
+			chunks := tm.layers[i].Grid.Query([4]float32{
+				float32(region.MinX) * float32(tm.Tmx.TileWidth),
+				float32(region.MinY) * float32(tm.Tmx.TileHeight),
+				float32(region.MaxX) * float32(tm.Tmx.TileWidth),
+				float32(region.MaxY) * float32(tm.Tmx.TileHeight),
+			})
 			for j := range chunks {
 				sX := max(region.MinX, chunks[j].x)
 				sY := max(region.MinY, chunks[j].y)
